@@ -5,15 +5,19 @@ namespace App\Http\Controllers\Api;
 use App\Http\Controllers\Controller;
 use App\Models\Book;
 use Illuminate\Http\Request;
+use App\Services\EmbeddingService;
 
 class BookController extends Controller
 {
-    // عرض الكتب مع الفلترة والبحث (متاح للجميع)
+    protected EmbeddingService $embeddingService;
+    public function __construct(EmbeddingService $embeddingService)
+    {
+        $this->embeddingService = $embeddingService;
+    }
     public function index(Request $request)
     {
         $query = Book::with('category');
 
-        // فلترة بالبحث (العنوان، المؤلف، أو الـ ISBN)
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -23,18 +27,15 @@ class BookController extends Controller
             });
         }
 
-        // فلترة بالتصنيف
         if ($request->filled('category_id')) {
             $query->where('category_id', $request->category_id);
         }
 
-        // إرجاع النتيجة مع Pagination (10 كتب بالصفحة)
         $books = $query->latest()->paginate(10);
 
         return response()->json($books);
     }
 
-    // إضافة كتاب جديد (Admin فقط)
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -45,9 +46,16 @@ class BookController extends Controller
             'isbn' => 'required|string|unique:books,isbn|max:100',
             'publication_date' => 'nullable|date',
             'available_copies' => 'required|integer|min:0',
-            'cover_image' => 'nullable|string', // يمكن استبدالها بـ file upload لاحقاً
+            'cover_image' => 'nullable|string', 
         ]);
 
+        $textToEmbed = "Title: {$validated['title']}. Author: {$validated['author']}. Description: {$validated['description']}";
+
+        try {
+            $validated['embedding'] = $this->embeddingService->generateEmbedding($textToEmbed);
+        } catch (\Exception $e) {
+            $validated['embedding'] = null;
+        }
         $book = Book::create($validated);
 
         return response()->json([
@@ -56,14 +64,12 @@ class BookController extends Controller
         ], 201);
     }
 
-    // عرض كتاب محدد
     public function show($id)
     {
         $book = Book::with('category')->findOrFail($id);
         return response()->json($book);
     }
 
-    // تعديل كتاب (Admin فقط)
     public function update(Request $request, $id)
     {
         $book = Book::findOrFail($id);
@@ -79,6 +85,18 @@ class BookController extends Controller
             'cover_image' => 'nullable|string',
         ]);
 
+        if (isset($validated['title']) || isset($validated['description'])) {
+            $title = $validated['title'] ?? $book->title;
+            $author = $validated['author'] ?? $book->author;
+            $desc = $validated['description'] ?? $book->description;
+            
+            try {
+                $validated['embedding'] = $this->embeddingService->generateEmbedding("Title: {$title}. Author: {$author}. Description: {$desc}");
+            } catch (\Exception $e) {
+                // تجاهل إذا لم يتوفر اتصال
+            }
+        }
+
         $book->update($validated);
 
         return response()->json([
@@ -87,7 +105,6 @@ class BookController extends Controller
         ]);
     }
 
-    // حذف كتاب (Admin فقط)
     public function destroy($id)
     {
         $book = Book::findOrFail($id);

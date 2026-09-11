@@ -18,8 +18,12 @@ class Book extends Model
         'publication_date',
         'available_copies',
         'cover_image',
+        'embedding',
     ];
 
+    protected $casts = [
+        'embedding' => 'array', 
+    ];
     public function category()
     {
         return $this->belongsTo(Category::class);

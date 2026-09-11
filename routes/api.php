@@ -5,6 +5,9 @@ use App\Http\Controllers\Api\BookController;
 use App\Http\Controllers\Api\CategoryController;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\ChatController;
+use App\Http\Controllers\Api\RecommendationController;
+
+
 // Auth Routes (Public)
 Route::post('/register', [AuthController::class, 'register']);
 Route::post('/login', [AuthController::class, 'login']);
@@ -34,4 +37,5 @@ Route::middleware('auth:sanctum')->group(function () {
     });
     // مسار الشات بوت المشترك (يفلتر تلقائياً حسب الرتبة)
     Route::post('/chat', [ChatController::class, 'ask']);
+    Route::get('/recommendations', [RecommendationController::class, 'getRecommendations']);
 });
