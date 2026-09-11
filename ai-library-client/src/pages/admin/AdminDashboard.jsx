@@ -17,7 +17,7 @@ export default function AdminDashboard() {
         available_copies: 1,
         cover_image: "",
     });
-
+    const [coverFile, setCoverFile] = useState(null);
     const loadData = async () => {
         try {
             const [bRes, cRes, uRes] = await Promise.all([
@@ -47,18 +47,40 @@ export default function AdminDashboard() {
 
     const handleAddBook = async (e) => {
         e.preventDefault();
-        await api.post("/books", newBook);
-        setNewBook({
-            title: "",
-            author: "",
-            description: "",
-            isbn: "",
-            category_id: "",
-            available_copies: 1,
-        });
-        loadData();
-    };
 
+        const formData = new FormData();
+        formData.append("title", newBook.title);
+        formData.append("author", newBook.author);
+        formData.append("description", newBook.description);
+        formData.append("isbn", newBook.isbn);
+        formData.append("category_id", newBook.category_id);
+        formData.append("available_copies", newBook.available_copies);
+
+        if (coverFile) {
+            formData.append("cover_image", coverFile);
+        }
+
+        try {
+            await api.post("/books", formData, {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            });
+
+            setNewBook({
+                title: "",
+                author: "",
+                description: "",
+                isbn: "",
+                category_id: "",
+                available_copies: 1,
+            });
+            setCoverFile(null);
+            loadData();
+        } catch (err) {
+            alert(err.response?.data?.message || "Error creating book");
+        }
+    };
     const handleDeleteBook = async (id) => {
         if (confirm("Delete this book?")) {
             await api.delete(`/books/${id}`);
@@ -228,6 +250,19 @@ export default function AdminDashboard() {
                             }
                             className="w-full border rounded-lg px-3 py-1.5 text-sm"
                         />
+                        <div>
+                            <label className="block text-xs font-semibold text-gray-600 mb-1">
+                                Book Cover Image
+                            </label>
+                            <input
+                                type="file"
+                                accept="image/*"
+                                onChange={(e) =>
+                                    setCoverFile(e.target.files[0])
+                                }
+                                className="w-full text-xs text-gray-500 file:mr-4 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer border rounded-lg p-1"
+                            />
+                        </div>
                         <button
                             type="submit"
                             className="w-full bg-indigo-600 text-white font-semibold py-2 rounded-lg text-sm hover:bg-indigo-700"

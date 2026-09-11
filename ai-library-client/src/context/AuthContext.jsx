@@ -40,8 +40,10 @@ export const AuthProvider = ({ children }) => {
         }
     };
 
-    const isAdmin = user?.roles?.some(
-        (r) => r === "admin" || r.name === "admin",
+    const isAdmin = Boolean(
+        user?.roles?.some((r) =>
+            typeof r === "string" ? r === "admin" : r.name === "admin",
+        ),
     );
 
     return (

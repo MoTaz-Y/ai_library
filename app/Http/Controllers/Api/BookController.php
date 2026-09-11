@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Book;
 use Illuminate\Http\Request;
 use App\Services\EmbeddingService;
+use Illuminate\Support\Facades\Storage;
+
 
 class BookController extends Controller
 {
@@ -46,18 +48,26 @@ class BookController extends Controller
             'isbn' => 'required|string|unique:books,isbn|max:100',
             'publication_date' => 'nullable|date',
             'available_copies' => 'required|integer|min:0',
-            'cover_image' => 'nullable|string', 
+            'cover_image' => 'nullable|image|mimes:jpeg,png,jpg,webp|max:2048', // يقبل صورة بحد أقصى 2MB
         ]);
-
+    
+        // رفع وتخزين الصورة إن وجدت
+        if ($request->hasFile('cover_image')) {
+            $path = $request->file('cover_image')->store('covers', 'public');
+            // حفظ الرابط الكامل المتاح للوصول عبر الويب
+            $validated['cover_image'] = asset('storage/' . $path);
+        }
+    
+        // توليد الـ Vector للذكاء الاصطناعي
         $textToEmbed = "Title: {$validated['title']}. Author: {$validated['author']}. Description: {$validated['description']}";
-
         try {
             $validated['embedding'] = $this->embeddingService->generateEmbedding($textToEmbed);
         } catch (\Exception $e) {
             $validated['embedding'] = null;
         }
+    
         $book = Book::create($validated);
-
+    
         return response()->json([
             'message' => 'Book created successfully',
             'book' => $book->load('category'),
