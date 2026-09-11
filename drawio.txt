@@ -1,0 +1,23 @@
+Architecture Flow)
+
+User Question
+     │
+     ▼
+[ Auth & Role Verification ]
+     │
+     ├── If Role == 'admin':
+     │     Gather: System stats, total users, book inventory, category counts
+     │
+     └── If Role == 'user':
+           Check: Is question asking for admin-only stats?
+             ├── Yes ──> Immediate 403 / Rejection response (No AI call)
+             └── No  ──> Gather: Available books, categories, user's profile/interests
+     │
+     ▼
+[ Build Prompt with Filtered Context ]
+     │
+     ▼
+[ Call LLM (OpenAI / Gemini) via Laravel HTTP ]
+     │
+     ▼
+Send Sanitized Answer to Client
